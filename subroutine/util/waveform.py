@@ -1,6 +1,7 @@
-import scipy
 from typing import Union
+
 import numpy as np
+import scipy
 
 
 def resample(
@@ -17,7 +18,7 @@ def resample(
         np.ndarray: resampled waveform
     """
 
-    assert sr1 != 0, ""
+    assert sr1 > 0, "sr1 must be larger than 0."
 
     if sr1 != sr2:
         L = len(w)

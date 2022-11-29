@@ -1,5 +1,5 @@
-from typing import Union
 from pathlib import Path
+from typing import Union
 
 
 def jvsspkr(number: int) -> str:
@@ -16,7 +16,6 @@ def jvspath(jvsdir: Union[str, Path], spkrnum: int, uttrnum: int) -> Path:
     spkr = jvsspkr(spkrnum)
     uttr = jvsuttr(uttrnum)
 
-    path = f"{jvsdir}/jvs_ver1/{spkr}/parallel100/wav24kHz16bit/{uttr}.wav"
-    path = Path(path)
+    path = Path(f"{jvsdir}/jvs_ver1/{spkr}/parallel100/wav24kHz16bit/{uttr}.wav")
     assert path.exists(), f"jvs wav file not exist: {path}"
     return path

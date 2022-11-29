@@ -1,7 +1,8 @@
-import unittest
-from subroutine.jvs import path
-from pathlib import Path
 import os
+import unittest
+from pathlib import Path
+
+from subroutine.jvs import path
 
 
 class TestPath(unittest.TestCase):

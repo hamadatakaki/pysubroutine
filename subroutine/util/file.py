@@ -1,7 +1,9 @@
+from pathlib import Path
+from typing import Optional, Union
+
 import numpy as np
 from scipy.io import wavfile
-from typing import Union, Optional
-from pathlib import Path
+
 from subroutine.util import waveform
 
 

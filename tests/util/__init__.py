@@ -1,6 +1,8 @@
 import unittest
-from subroutine.util import waveform
+
 import numpy as np
+
+from subroutine.util import waveform
 
 
 def generate_sin_function(length=220500, sr=44100, f=1600):
