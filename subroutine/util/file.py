@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Optional, Union
 
+import h5py
 import numpy as np
 from scipy.io import wavfile
 
-from subroutine.util import waveform, timestamp
-import h5py
+from subroutine.util import timestamp, waveform
 
 
 def load_wav(
@@ -75,7 +75,7 @@ def dump_h5(path: Union[str, Path], overwrite: bool = True, **h5data) -> Path:
 
 
 def rec_load_h5(h5file) -> dict:
-    data = {}
+    data: dict[str, Union[dict, np.ndarray]] = {}
 
     for key, value in h5file.items():
         if type(value) == h5py._hl.dataset.Dataset:
