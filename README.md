@@ -20,6 +20,17 @@ uninstallするときは `kurage-subroutine` という名前でできる。
 $ pip uninstall kurage-subroutine
 ```
 
+## 各種開発ツール
+
+```sh
+# test all
+$ python -m unittest discover tests
+# mypy checking
+$ mypy subroutine
+# isort
+$ isort subroutine
+```
+
 ## 動作環境
 
 Python3.9 on Ubuntu on WSL2で開発・動作確認をしています。
