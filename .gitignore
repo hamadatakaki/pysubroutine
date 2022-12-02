@@ -2,3 +2,6 @@
 .mypy_cache/
 **/__pycache__/
 data/
+
+kurage_subroutine.egg-info/
+build/
