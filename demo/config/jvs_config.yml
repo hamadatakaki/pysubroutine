@@ -1,0 +1,18 @@
+preprocess:
+  n_job: 4
+  speakers:
+    - 1
+    - 2
+  utterances: all
+feature:
+  librosa:
+    fft_length: 2048 # n_ftt
+    hop_length: 300
+    sampling_rate: 24000
+    win_length: 1200
+    window: hann_window
+    num_mels: 80     # n_mels
+  world:
+    frame_period: 5
+    sampling_rate: 24000
+    mgc_order: 24

@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import h5py
 import numpy as np
+import yaml
 from scipy.io import wavfile
 
 from subroutine.util import timestamp, waveform
@@ -94,9 +95,24 @@ def load_h5(path: Union[str, Path]) -> dict:
 
     if path.suffix != ".hdf5":
         print(f"[warning] Path is not hdf5 file: {path}")
+
     assert path.exists(), f"Path not exist: {path}"
 
     with h5py.File(path, "r") as file:
         data = rec_load_h5(file)
+
+    return data
+
+
+def load_yaml(path: Union[str, Path]) -> dict:
+    path = Path(path)
+
+    if path.suffix != ".yml":
+        print(f"[warning] Path is not YAML file: {path}")
+
+    assert path.exists(), f"Path not exist: {path}"
+
+    with open(path, "r") as file:
+        data = yaml.safe_load(file)
 
     return data
