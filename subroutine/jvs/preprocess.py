@@ -2,8 +2,9 @@ import dataclasses
 import os
 from pathlib import Path
 from typing import Any, Optional
-from tqdm import tqdm
+
 import numpy as np
+from tqdm import tqdm
 
 from subroutine.feature.speech import LibrosaFeature, WorldFeature
 from subroutine.jvs.path import jvspath, jvsspkr, jvsuttr
@@ -91,7 +92,7 @@ class Preprocessor(object):
         for key, n_uttrs, path in results:
             self.info[key] = {"n_uttrs": n_uttrs, "path": str(path)}
 
-    def exec_spkr(self, spkrnum: int) -> tuple[str, dict[str, Any], int]:
+    def exec_spkr(self, spkrnum: int) -> tuple[str, int, Path]:
         feats = {}
         stats = None
 

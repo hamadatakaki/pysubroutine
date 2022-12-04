@@ -8,7 +8,6 @@ from subroutine.jvs.preprocess import Preprocessor  # noqa: E402
 from subroutine.util.file import load_yaml  # noqa: E402
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description="Extract features of JVS corpus.")
 
     parser.add_argument(
