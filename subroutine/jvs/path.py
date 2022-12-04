@@ -21,6 +21,7 @@ def jvspath(
 ) -> Path:
     spkr, uttr = jvsspkr(spkrnum), jvsuttr(uttrnum)
     path = Path(f"{jvsdir}/jvs_ver1/{spkr}/parallel100/wav24kHz16bit/{uttr}.wav")
-    assert path.exists(), f"jvs wav file not exist: {path}"
+    if not path.exists():
+        print(f"[warning] jvs wav file not exist: {path}")
 
     return path

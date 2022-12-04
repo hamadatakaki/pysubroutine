@@ -220,10 +220,10 @@ class WorldFeature(BaseSpeechFeature):
             raise RuntimeError("WorldFeature::fet_features - Waveform is None")
 
         return {
-            "log_f0": self.log_f0(),
-            "vuv_flag": self.vuv_flag(),
-            "mel_cepstrum": self.mel_cepstrum(),
-            "band_aperiodicity": self.band_aperiodicity(),
+            "log_f0": self.log_f0().T,
+            "vuv_flag": self.vuv_flag().T,
+            "mel_cepstrum": self.mel_cepstrum().T,
+            "band_aperiodicity": self.band_aperiodicity().T,
         }
 
     def __interp1d(self, f0: np.ndarray, kind: str = "slinear") -> np.ndarray:

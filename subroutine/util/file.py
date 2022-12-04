@@ -116,3 +116,15 @@ def load_yaml(path: Union[str, Path]) -> dict:
         data = yaml.safe_load(file)
 
     return data
+
+
+def dump_yaml(path: Union[str, Path], data: dict) -> Path:
+    path = Path(path)
+
+    if path.suffix != ".yml":
+        print(f"[warning] Path is not YAML file: {path}")
+
+    with open(path, "w") as file:
+        yaml.dump(data, file)
+
+    return path

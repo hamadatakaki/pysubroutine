@@ -1,7 +1,7 @@
+import pprint
 from typing import TypeVar, Union
 
 import numpy as np
-import pprint
 
 T = TypeVar("T")
 RecDict = Union[dict[str, "RecDict[T]"], T]

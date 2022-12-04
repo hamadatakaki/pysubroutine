@@ -1,15 +1,11 @@
 import argparse
-
+import sys
 from pathlib import Path
 
-import sys
-
-print(sys.path)
 sys.path.append(".")
 
 from subroutine.jvs.preprocess import Preprocessor  # noqa: E402
 from subroutine.util.file import load_yaml  # noqa: E402
-from subroutine.debug.printer import debug_ndarray_dict  # noqa: E402
 
 if __name__ == "__main__":
 
@@ -28,6 +24,5 @@ if __name__ == "__main__":
     config = load_yaml(args.config)
 
     prep = Preprocessor(input_dir, output_dir, config)
-    res = prep.exec()
-    debug_ndarray_dict(res)
+    prep.exec()
     prep.dump()

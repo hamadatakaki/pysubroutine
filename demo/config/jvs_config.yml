@@ -1,11 +1,6 @@
 preprocess:
-  n_job: 4
-  speakers:
-    - 1
-    - 2
-  utterances:
-    - 1
-    - 2
+  speakers: all
+  utterances: all
   sampling_rate: 24000
 feature:
   librosa:

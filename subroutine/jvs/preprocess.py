@@ -2,13 +2,12 @@ import dataclasses
 import os
 from pathlib import Path
 from typing import Any, Optional
-
+from tqdm import tqdm
 import numpy as np
-from joblib import Parallel, delayed
 
 from subroutine.feature.speech import LibrosaFeature, WorldFeature
 from subroutine.jvs.path import jvspath, jvsspkr, jvsuttr
-from subroutine.util.file import dump_h5, load_wav
+from subroutine.util.file import dump_h5, dump_yaml, load_wav
 from subroutine.util.timestamp import now_datetime_text
 
 # import logging
@@ -20,8 +19,7 @@ class Preprocessor(object):
     output_dir: Path
     config: dict[str, Any]
 
-    features: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
-    stats: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
+    info: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
 
     feat_config: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
     process_config: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
@@ -31,6 +29,8 @@ class Preprocessor(object):
     utterances: list[int] = dataclasses.field(default_factory=list, init=False)
 
     def __post_init__(self):
+        self.ts = now_datetime_text()
+
         # check input_dir
         corpus_path = self.input_dir / "jvs_ver1"
         assert corpus_path.exists(), f"Corpus is not exist: {corpus_path}"
@@ -68,6 +68,11 @@ class Preprocessor(object):
             else:
                 raise RuntimeError("Utterances setting is invalid.")
 
+        self.info["general"] = {
+            "speakers": str(self.process_config["speakers"]),
+            "utterances": str(self.process_config["utterances"]),
+        }
+
         if "sampling_rate" in self.process_config:
             _sr = self.process_config["sampling_rate"]
             if type(_sr) == int:
@@ -78,32 +83,74 @@ class Preprocessor(object):
             raise RuntimeError("Not found sampling_rate in config YAML.")
 
     def exec(self):
-        results = Parallel(n_jobs=self.n_job)(
-            delayed(Preprocessor.exec_spkr)(self, n_spkr) for n_spkr in self.speakers
-        )
+        results = []
 
-        for key, value in results:
-            self.features[key] = value
+        for n_spkr in tqdm(self.speakers):
+            results.append(self.exec_spkr(n_spkr))
 
-        # TODO: stats info
+        for key, n_uttrs, path in results:
+            self.info[key] = {"n_uttrs": n_uttrs, "path": str(path)}
 
-        return self.features
+    def exec_spkr(self, spkrnum: int) -> tuple[str, dict[str, Any], int]:
+        feats = {}
+        stats = None
 
-    def exec_spkr(self, spkrnum: int) -> tuple[str, dict[str, Any]]:
-        dict_spkr = {}
+        # results = Parallel(n_jobs=self.n_job)(
+        #     delayed(Preprocessor.exec_uttr)(self, spkrnum, n_uttr)
+        #     for n_uttr in self.utterances
+        # )
 
-        results = Parallel(n_jobs=self.n_job)(
-            delayed(Preprocessor.exec_uttr)(self, spkrnum, n_uttr)
-            for n_uttr in self.utterances
-        )
+        results = []
+        for n_uttr in self.utterances:
+            res = self.exec_uttr(spkrnum, n_uttr)
+            results.append(res)
+
+        n_uttrs = 0
 
         for key, value in results:
             if value is not None:
-                dict_spkr[key] = value
+                feats[key] = value
+                stats = self._update_stats(stats, value)
+                n_uttrs += 1
 
-            # TODO: normalize
+        feats["statistics"] = self._calc_stats(stats)
+        path = self.dump_spkr(spkrnum, feats)
 
-        return jvsspkr(spkrnum), dict_spkr
+        return jvsspkr(spkrnum), n_uttrs, path
+
+    def _update_stats(self, stack, data):
+        for key_corp in data:
+            for key_feat in data[key_corp]:
+                if stack is None:
+                    stack = {}
+                if key_corp not in stack:
+                    stack[key_corp] = {}
+                if key_feat not in stack[key_corp]:
+                    stack[key_corp][key_feat] = None
+
+                if stack[key_corp][key_feat] is None:
+                    stack[key_corp][key_feat] = data[key_corp][key_feat].copy()
+                else:
+                    stack[key_corp][key_feat] = np.concatenate(
+                        [stack[key_corp][key_feat], data[key_corp][key_feat]], axis=1
+                    )
+
+        return stack
+
+    def _calc_stats(self, stack):
+        stats = {}
+
+        for key_corp in stack:
+            if key_corp not in stats:
+                stats[key_corp] = {}
+
+            for key_feat in stack[key_corp]:
+                mean = np.mean(stack[key_corp][key_feat], axis=1)
+                var = np.var(stack[key_corp][key_feat], axis=1)
+
+                stats[key_corp][key_feat] = np.stack([mean, var])
+
+        return stats
 
     def exec_uttr(
         self, spkrnum: int, uttrnum: int
@@ -131,9 +178,21 @@ class Preprocessor(object):
         return waveform
 
     def reset(self):
-        self.features = {}
+        self.info = {}
 
     def dump(self) -> Path:
-        ts = now_datetime_text()
-        name = f"jvs-preprocess-{ts}.hdf5"
-        return dump_h5(self.output_dir / name, **self.features, overwrite=False)
+        return dump_yaml(
+            self.output_dir / f"stats-jvs-preprocess-{self.ts}.yml", self.info
+        )
+
+    def dump_spkr(self, spkr, data):
+        spkrdir = jvsspkr(spkr)
+        os.makedirs(self.output_dir / "spkrs" / spkrdir, exist_ok=True)
+
+        h5path = dump_h5(
+            self.output_dir / "spkrs" / spkrdir / f"jvs-preprocess-{self.ts}.hdf5",
+            **data,
+            overwrite=False,
+        )
+
+        return h5path
