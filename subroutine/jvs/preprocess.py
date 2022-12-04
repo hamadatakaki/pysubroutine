@@ -1,14 +1,17 @@
-import argparse
 import dataclasses
-import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+
+import numpy as np
+from joblib import Parallel, delayed
 
 from subroutine.feature.speech import LibrosaFeature, WorldFeature
-from subroutine.jvs.path import jvspath
-from subroutine.util.file import dump_h5, load_wav, load_yaml
+from subroutine.jvs.path import jvspath, jvsspkr, jvsuttr
+from subroutine.util.file import dump_h5, load_wav
 from subroutine.util.timestamp import now_datetime_text
+
+# import logging
 
 
 @dataclasses.dataclass
@@ -17,14 +20,15 @@ class Preprocessor(object):
     output_dir: Path
     config: dict[str, Any]
 
-    features: dict[str, Any] = dataclasses.field(default={}, init=False)
+    features: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
+    stats: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
 
-    feat_config: dict[str, Any] = dataclasses.field(default={}, init=False)
-    process_config: dict[str, Any] = dataclasses.field(default={}, init=False)
+    feat_config: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
+    process_config: dict[str, Any] = dataclasses.field(default_factory=dict, init=False)
 
-    n_job: int = dataclasses.field(default=1, init=False)
-    speakers: list[int] = dataclasses.field(default=[], init=False)
-    utterances: list[int] = dataclasses.field(default=[], init=False)
+    n_job: int = dataclasses.field(default=-1, init=False)
+    speakers: list[int] = dataclasses.field(default_factory=list, init=False)
+    utterances: list[int] = dataclasses.field(default_factory=list, init=False)
 
     def __post_init__(self):
         # check input_dir
@@ -64,8 +68,67 @@ class Preprocessor(object):
             else:
                 raise RuntimeError("Utterances setting is invalid.")
 
+        if "sampling_rate" in self.process_config:
+            _sr = self.process_config["sampling_rate"]
+            if type(_sr) == int:
+                self.sampling_rate = _sr
+            else:
+                raise RuntimeError("sampling_rate must be int typed.")
+        else:
+            raise RuntimeError("Not found sampling_rate in config YAML.")
+
     def exec(self):
-        pass
+        results = Parallel(n_jobs=self.n_job)(
+            delayed(Preprocessor.exec_spkr)(self, n_spkr) for n_spkr in self.speakers
+        )
+
+        for key, value in results:
+            self.features[key] = value
+
+        # TODO: stats info
+
+        return self.features
+
+    def exec_spkr(self, spkrnum: int) -> tuple[str, dict[str, Any]]:
+        dict_spkr = {}
+
+        results = Parallel(n_jobs=self.n_job)(
+            delayed(Preprocessor.exec_uttr)(self, spkrnum, n_uttr)
+            for n_uttr in self.utterances
+        )
+
+        for key, value in results:
+            if value is not None:
+                dict_spkr[key] = value
+
+            # TODO: normalize
+
+        return jvsspkr(spkrnum), dict_spkr
+
+    def exec_uttr(
+        self, spkrnum: int, uttrnum: int
+    ) -> tuple[str, Optional[dict[str, Any]]]:
+        waveform = self.load_uttr(spkrnum, uttrnum)
+
+        if waveform is None:
+            return jvsuttr(uttrnum), None
+
+        librosa_feat = LibrosaFeature(self.feat_config["librosa"]).get_features(
+            waveform
+        )
+        world_feat = WorldFeature(self.feat_config["world"]).get_features(waveform)
+
+        return jvsuttr(uttrnum), {"librosa": librosa_feat, "world": world_feat}
+
+    def load_uttr(self, spkrnum: int, uttrnum: int) -> Optional[np.ndarray]:
+        path = jvspath(self.input_dir, spkrnum, uttrnum)
+
+        if path.exists():
+            _, waveform = load_wav(path, sr=self.sampling_rate)
+        else:
+            waveform = None
+
+        return waveform
 
     def reset(self):
         self.features = {}
@@ -74,21 +137,3 @@ class Preprocessor(object):
         ts = now_datetime_text()
         name = f"jvs-preprocess-{ts}.hdf5"
         return dump_h5(self.output_dir / name, **self.features, overwrite=False)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract features of JVS corpus.")
-
-    parser.add_argument(
-        "-i", "--input_dir", required=True, help="jvs_ver1 が設置されているディレクトリ"
-    )
-    parser.add_argument("-o", "--output_dir", required=True, help="特徴量を保存するディレクトリ")
-    parser.add_argument("-c", "--config", required=True, help="設定を記述したyamlのパス")
-
-    args = parser.parse_args()
-
-    input_dir = Path(args.input_dir)
-    output_dir = Path(args.output_dir)
-    config = load_yaml(args.config)
-
-    Preprocessor(input_dir, output_dir, config).exec()

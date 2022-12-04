@@ -1,9 +1,7 @@
-import dataclasses
-from typing import Any, Optional, Union
-
-import sys
 import abc
-
+import dataclasses
+import sys
+from typing import Any, Optional, Union
 
 import librosa
 import numpy as np
@@ -92,10 +90,16 @@ class LibrosaFeature(BaseSpeechFeature):
 
         return self._melspec
 
+    def reset(self):
+        self.waveform = None
+        self._spec = None
+        self._melspec = None
+
     def get_features(
         self, waveform: Optional[np.ndarray] = None
     ) -> dict[str, FeatureObject]:
         if waveform is not None:
+            self.reset()
             self.waveform = waveform.astype(np.float64)
 
         if self.waveform is None:
@@ -195,10 +199,21 @@ class WorldFeature(BaseSpeechFeature):
 
         return self._bap
 
+    def reset(self):
+        self.waveform = None
+        self._f0 = None
+        self._timeaxis = None
+        self._lf0 = None
+        self._vuv = None
+        self._spec = None
+        self._mgc = None
+        self._bap = None
+
     def get_features(
         self, waveform: Optional[np.ndarray] = None
     ) -> dict[str, FeatureObject]:
         if waveform is not None:
+            self.reset()
             self.waveform = waveform.astype(np.float64)
 
         if self.waveform is None:
